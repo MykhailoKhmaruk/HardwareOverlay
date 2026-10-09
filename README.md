@@ -6,6 +6,9 @@ of your screen — useful while gaming or stress-testing.
 
 Built with WPF on .NET 8, sensors via [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor).
 
+[![GitHub release](https://img.shields.io/github/v/release/MykhailoKhmaruk/HardwareOverlay)](https://github.com/MykhailoKhmaruk/HardwareOverlay/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/MykhailoKhmaruk/HardwareOverlay/total)](https://github.com/MykhailoKhmaruk/HardwareOverlay/releases)
+
 ![Hardware Overlay](docs/screenshot.png)
 
 ## Features
@@ -21,7 +24,7 @@ Built with WPF on .NET 8, sensors via [LibreHardwareMonitor](https://github.com/
 
 ## Install
 
-Download **`HardwareOverlay-Setup-x.y.z.exe`** from the [Releases](../../releases) page and run it.
+**[Download HardwareOverlay-Setup.exe](https://github.com/MykhailoKhmaruk/HardwareOverlay/releases/latest/download/HardwareOverlay-Setup.exe)** — click starts the download immediately.
 
 - Windows 10/11 x64. Admin rights are required — hardware sensors need driver access.
 - The app is unsigned, so SmartScreen may warn on first run: **More info → Run anyway**.
