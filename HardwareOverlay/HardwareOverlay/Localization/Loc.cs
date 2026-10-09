@@ -1,0 +1,387 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using HardwareOverlay.Models;
+
+namespace HardwareOverlay.Localization;
+
+/// <summary>
+/// Current UI language plus the translation tables.
+///
+/// XAML, static keys:
+///   Text="{Binding Path=[Tray_Settings], Source={x:Static loc:Loc.Instance}}"
+///
+/// Keys that live in the data (metric name, corner) go through LocConverter in a
+/// MultiBinding — the extra Path=Current binding re-evaluates on language change.
+///
+/// Code: Loc.Instance.Resolve("Tray_Exit")
+/// </summary>
+public sealed class Loc : ObservableObject
+{
+    public static Loc Instance { get; } = new();
+
+    private AppLanguage _current = AppLanguage.Ukrainian;
+
+    public AppLanguage Current
+    {
+        get => _current;
+        set
+        {
+            if (SetProperty(ref _current, value))
+                OnPropertyChanged("Item[]"); // refresh every [Key] indexer binding
+        }
+    }
+
+    public string this[string key] => Resolve(key);
+
+    public string Resolve(string key)
+    {
+        if (Tables.TryGetValue(_current, out var table) && table.TryGetValue(key, out var value))
+            return value;
+
+        if (En.TryGetValue(key, out var fallback))
+            return fallback;
+
+        return key;
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> En = new Dictionary<string, string>
+    {
+        ["App_Title"]           = "Hardware Overlay",
+        ["Tray_Tooltip"]        = "Hardware Overlay",
+        ["Tray_Settings"]       = "Settings",
+        ["Tray_Exit"]           = "Exit",
+        ["Msg_AlreadyRunning"]  = "Hardware Overlay is already running.",
+        ["Win_Settings"]        = "Hardware Overlay — Settings",
+        ["Tab_Metrics"]         = "Metrics",
+        ["Tab_Overlay"]         = "Overlay",
+        ["Lbl_Prefix"]          = "Prefix:",
+        ["Lbl_Color"]           = "Color:",
+        ["Lbl_Font"]            = "Font:",
+        ["Lbl_Disk"]            = "Disk:",
+        ["Lbl_BgOpacity"]       = "Background opacity:",
+        ["Lbl_BgColor"]         = "Background color:",
+        ["Lbl_TextOpacity"]     = "Text opacity:",
+        ["Lbl_AutoSize"]        = "Auto size:",
+        ["Lbl_Width"]           = "Width:",
+        ["Lbl_Height"]          = "Height:",
+        ["Lbl_Corner"]          = "Screen corner:",
+        ["Lbl_MarginX"]         = "Horizontal margin:",
+        ["Lbl_MarginY"]         = "Vertical margin:",
+        ["Lbl_UpdateInterval"]  = "Update interval:",
+        ["Lbl_Language"]        = "Language:",
+        ["Btn_Reset"]           = "Reset to defaults",
+        ["Btn_Close"]           = "Close",
+        ["Btn_Up"]              = "Move up",
+        ["Btn_Down"]            = "Move down",
+        ["Note_AutoSave"]       = "Changes apply and save automatically.",
+        ["Disk_All"]            = "All disks",
+        ["Disk_NotFound"]       = "Not found",
+        ["Corner_TopLeft"]      = "Top left",
+        ["Corner_TopRight"]     = "Top right",
+        ["Corner_BottomLeft"]   = "Bottom left",
+        ["Corner_BottomRight"]  = "Bottom right",
+        ["Dialog_ResetText"]    = "Reset all settings to defaults?",
+        ["Lbl_Autostart"]       = "Run at Windows startup",
+        ["Lbl_Name"]            = "Name",
+        ["Lbl_Disks"]           = "Disks",
+        ["Lbl_DiskAlias"]       = "Overlay name",
+        ["Validation_Color"]    = "Format: #RRGGBB or #AARRGGBB",
+        ["Metric_CpuTemp"]      = "CPU: Temperature",
+        ["Metric_CpuLoad"]      = "CPU: Load",
+        ["Metric_GpuTemp"]      = "GPU: Temperature",
+        ["Metric_GpuVram"]      = "GPU: VRAM (MB)",
+        ["Metric_GpuLoad"]      = "GPU: Load",
+        ["Metric_RamUsed"]      = "RAM: Usage (MB)",
+        ["Metric_RamLoad"]      = "RAM: Usage (%)",
+        ["Metric_RamTemp"]      = "RAM: Temperature",
+        ["Metric_MbTemp"]       = "Motherboard: Temperature",
+        ["Metric_DiskTemp"]     = "Disk: Temperature",
+        ["Metric_DiskLoad"]     = "Disk: Load",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> Uk = new Dictionary<string, string>
+    {
+        ["App_Title"]           = "Hardware Overlay",
+        ["Tray_Tooltip"]        = "Hardware Overlay",
+        ["Tray_Settings"]       = "Налаштування",
+        ["Tray_Exit"]           = "Вихід",
+        ["Msg_AlreadyRunning"]  = "Hardware Overlay вже запущено.",
+        ["Win_Settings"]        = "Hardware Overlay — Налаштування",
+        ["Tab_Metrics"]         = "Метрики",
+        ["Tab_Overlay"]         = "Оверлей",
+        ["Lbl_Prefix"]          = "Префікс:",
+        ["Lbl_Color"]           = "Колір:",
+        ["Lbl_Font"]            = "Шрифт:",
+        ["Lbl_Disk"]            = "Диск:",
+        ["Lbl_BgOpacity"]       = "Прозорість фону:",
+        ["Lbl_BgColor"]         = "Колір фону:",
+        ["Lbl_TextOpacity"]     = "Прозорість тексту:",
+        ["Lbl_AutoSize"]        = "Авторозмір:",
+        ["Lbl_Width"]           = "Ширина:",
+        ["Lbl_Height"]          = "Висота:",
+        ["Lbl_Corner"]          = "Кут екрана:",
+        ["Lbl_MarginX"]         = "Відступ горизонтальний:",
+        ["Lbl_MarginY"]         = "Відступ вертикальний:",
+        ["Lbl_UpdateInterval"]  = "Інтервал оновлення:",
+        ["Lbl_Language"]        = "Мова:",
+        ["Btn_Reset"]           = "Скинути до стандартних",
+        ["Btn_Close"]           = "Закрити",
+        ["Btn_Up"]              = "Вище",
+        ["Btn_Down"]            = "Нижче",
+        ["Note_AutoSave"]       = "Зміни застосовуються та зберігаються автоматично.",
+        ["Disk_All"]            = "Усі диски",
+        ["Disk_NotFound"]       = "Не знайдено",
+        ["Corner_TopLeft"]      = "Верхній лівий",
+        ["Corner_TopRight"]     = "Верхній правий",
+        ["Corner_BottomLeft"]   = "Нижній лівий",
+        ["Corner_BottomRight"]  = "Нижній правий",
+        ["Dialog_ResetText"]    = "Скинути всі налаштування до стандартних?",
+        ["Lbl_Autostart"]       = "Запускати при запуску Windows",
+        ["Lbl_Name"]            = "Назва",
+        ["Lbl_Disks"]           = "Диски",
+        ["Lbl_DiskAlias"]       = "Назва в оверлеї",
+        ["Validation_Color"]    = "Формат: #RRGGBB або #AARRGGBB",
+        ["Metric_CpuTemp"]      = "CPU: Температура",
+        ["Metric_CpuLoad"]      = "CPU: Завантаженість",
+        ["Metric_GpuTemp"]      = "GPU: Температура",
+        ["Metric_GpuVram"]      = "GPU: VRAM (MB)",
+        ["Metric_GpuLoad"]      = "GPU: Завантаженість",
+        ["Metric_RamUsed"]      = "RAM: Використання (MB)",
+        ["Metric_RamLoad"]      = "RAM: Використання (%)",
+        ["Metric_RamTemp"]      = "RAM: Температура",
+        ["Metric_MbTemp"]       = "Motherboard: Температура",
+        ["Metric_DiskTemp"]     = "Диск: Температура",
+        ["Metric_DiskLoad"]     = "Диск: Завантаженість",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> De = new Dictionary<string, string>
+    {
+        ["App_Title"]           = "Hardware Overlay",
+        ["Tray_Tooltip"]        = "Hardware Overlay",
+        ["Tray_Settings"]       = "Einstellungen",
+        ["Tray_Exit"]           = "Beenden",
+        ["Msg_AlreadyRunning"]  = "Hardware Overlay läuft bereits.",
+        ["Win_Settings"]        = "Hardware Overlay — Einstellungen",
+        ["Tab_Metrics"]         = "Metriken",
+        ["Tab_Overlay"]         = "Overlay",
+        ["Lbl_Prefix"]          = "Präfix:",
+        ["Lbl_Color"]           = "Farbe:",
+        ["Lbl_Font"]            = "Schrift:",
+        ["Lbl_Disk"]            = "Laufwerk:",
+        ["Lbl_BgOpacity"]       = "Hintergrund-Deckkraft:",
+        ["Lbl_BgColor"]         = "Hintergrundfarbe:",
+        ["Lbl_TextOpacity"]     = "Text-Deckkraft:",
+        ["Lbl_AutoSize"]        = "Auto-Größe:",
+        ["Lbl_Width"]           = "Breite:",
+        ["Lbl_Height"]          = "Höhe:",
+        ["Lbl_Corner"]          = "Bildschirmecke:",
+        ["Lbl_MarginX"]         = "Horizontaler Abstand:",
+        ["Lbl_MarginY"]         = "Vertikaler Abstand:",
+        ["Lbl_UpdateInterval"]  = "Aktualisierungsintervall:",
+        ["Lbl_Language"]        = "Sprache:",
+        ["Btn_Reset"]           = "Auf Standard zurücksetzen",
+        ["Btn_Close"]           = "Schließen",
+        ["Btn_Up"]              = "Nach oben",
+        ["Btn_Down"]            = "Nach unten",
+        ["Note_AutoSave"]       = "Änderungen werden automatisch übernommen und gespeichert.",
+        ["Disk_All"]            = "Alle Laufwerke",
+        ["Disk_NotFound"]       = "Nicht gefunden",
+        ["Corner_TopLeft"]      = "Oben links",
+        ["Corner_TopRight"]     = "Oben rechts",
+        ["Corner_BottomLeft"]   = "Unten links",
+        ["Corner_BottomRight"]  = "Unten rechts",
+        ["Dialog_ResetText"]    = "Alle Einstellungen auf Standardwerte zurücksetzen?",
+        ["Lbl_Autostart"]       = "Mit Windows starten",
+        ["Lbl_Name"]            = "Name",
+        ["Lbl_Disks"]           = "Laufwerke",
+        ["Lbl_DiskAlias"]       = "Anzeigename",
+        ["Validation_Color"]    = "Format: #RRGGBB oder #AARRGGBB",
+        ["Metric_CpuTemp"]      = "CPU: Temperatur",
+        ["Metric_CpuLoad"]      = "CPU: Auslastung",
+        ["Metric_GpuTemp"]      = "GPU: Temperatur",
+        ["Metric_GpuVram"]      = "GPU: VRAM (MB)",
+        ["Metric_GpuLoad"]      = "GPU: Auslastung",
+        ["Metric_RamUsed"]      = "RAM: Verwendung (MB)",
+        ["Metric_RamLoad"]      = "RAM: Verwendung (%)",
+        ["Metric_RamTemp"]      = "RAM: Temperatur",
+        ["Metric_MbTemp"]       = "Mainboard: Temperatur",
+        ["Metric_DiskTemp"]     = "Laufwerk: Temperatur",
+        ["Metric_DiskLoad"]     = "Laufwerk: Auslastung",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> Pt = new Dictionary<string, string>
+    {
+        ["App_Title"]           = "Hardware Overlay",
+        ["Tray_Tooltip"]        = "Hardware Overlay",
+        ["Tray_Settings"]       = "Definições",
+        ["Tray_Exit"]           = "Sair",
+        ["Msg_AlreadyRunning"]  = "O Hardware Overlay já está em execução.",
+        ["Win_Settings"]        = "Hardware Overlay — Definições",
+        ["Tab_Metrics"]         = "Métricas",
+        ["Tab_Overlay"]         = "Sobreposição",
+        ["Lbl_Prefix"]          = "Prefixo:",
+        ["Lbl_Color"]           = "Cor:",
+        ["Lbl_Font"]            = "Fonte:",
+        ["Lbl_Disk"]            = "Disco:",
+        ["Lbl_BgOpacity"]       = "Opacidade do fundo:",
+        ["Lbl_BgColor"]         = "Cor de fundo:",
+        ["Lbl_TextOpacity"]     = "Opacidade do texto:",
+        ["Lbl_AutoSize"]        = "Tamanho automático:",
+        ["Lbl_Width"]           = "Largura:",
+        ["Lbl_Height"]          = "Altura:",
+        ["Lbl_Corner"]          = "Canto do ecrã:",
+        ["Lbl_MarginX"]         = "Margem horizontal:",
+        ["Lbl_MarginY"]         = "Margem vertical:",
+        ["Lbl_UpdateInterval"]  = "Intervalo de atualização:",
+        ["Lbl_Language"]        = "Idioma:",
+        ["Btn_Reset"]           = "Repor predefinições",
+        ["Btn_Close"]           = "Fechar",
+        ["Btn_Up"]              = "Para cima",
+        ["Btn_Down"]            = "Para baixo",
+        ["Note_AutoSave"]       = "As alterações são aplicadas e guardadas automaticamente.",
+        ["Disk_All"]            = "Todos os discos",
+        ["Disk_NotFound"]       = "Não encontrado",
+        ["Corner_TopLeft"]      = "Superior esquerdo",
+        ["Corner_TopRight"]     = "Superior direito",
+        ["Corner_BottomLeft"]   = "Inferior esquerdo",
+        ["Corner_BottomRight"]  = "Inferior direito",
+        ["Dialog_ResetText"]    = "Repor todas as definições para os valores predefinidos?",
+        ["Lbl_Autostart"]       = "Iniciar com o Windows",
+        ["Lbl_Name"]            = "Nome",
+        ["Lbl_Disks"]           = "Discos",
+        ["Lbl_DiskAlias"]       = "Nome no overlay",
+        ["Validation_Color"]    = "Formato: #RRGGBB ou #AARRGGBB",
+        ["Metric_CpuTemp"]      = "CPU: Temperatura",
+        ["Metric_CpuLoad"]      = "CPU: Utilização",
+        ["Metric_GpuTemp"]      = "GPU: Temperatura",
+        ["Metric_GpuVram"]      = "GPU: VRAM (MB)",
+        ["Metric_GpuLoad"]      = "GPU: Utilização",
+        ["Metric_RamUsed"]      = "RAM: Utilização (MB)",
+        ["Metric_RamLoad"]      = "RAM: Utilização (%)",
+        ["Metric_RamTemp"]      = "RAM: Temperatura",
+        ["Metric_MbTemp"]       = "Motherboard: Temperatura",
+        ["Metric_DiskTemp"]     = "Disco: Temperatura",
+        ["Metric_DiskLoad"]     = "Disco: Utilização",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> Es = new Dictionary<string, string>
+    {
+        ["App_Title"]           = "Hardware Overlay",
+        ["Tray_Tooltip"]        = "Hardware Overlay",
+        ["Tray_Settings"]       = "Configuración",
+        ["Tray_Exit"]           = "Salir",
+        ["Msg_AlreadyRunning"]  = "Hardware Overlay ya se está ejecutando.",
+        ["Win_Settings"]        = "Hardware Overlay — Configuración",
+        ["Tab_Metrics"]         = "Métricas",
+        ["Tab_Overlay"]         = "Superposición",
+        ["Lbl_Prefix"]          = "Prefijo:",
+        ["Lbl_Color"]           = "Color:",
+        ["Lbl_Font"]            = "Fuente:",
+        ["Lbl_Disk"]            = "Disco:",
+        ["Lbl_BgOpacity"]       = "Opacidad del fondo:",
+        ["Lbl_BgColor"]         = "Color de fondo:",
+        ["Lbl_TextOpacity"]     = "Opacidad del texto:",
+        ["Lbl_AutoSize"]        = "Tamaño automático:",
+        ["Lbl_Width"]           = "Anchura:",
+        ["Lbl_Height"]          = "Altura:",
+        ["Lbl_Corner"]          = "Esquina de pantalla:",
+        ["Lbl_MarginX"]         = "Margen horizontal:",
+        ["Lbl_MarginY"]         = "Margen vertical:",
+        ["Lbl_UpdateInterval"]  = "Intervalo de actualización:",
+        ["Lbl_Language"]        = "Idioma:",
+        ["Btn_Reset"]           = "Restablecer valores",
+        ["Btn_Close"]           = "Cerrar",
+        ["Btn_Up"]              = "Subir",
+        ["Btn_Down"]            = "Bajar",
+        ["Note_AutoSave"]       = "Los cambios se aplican y guardan automáticamente.",
+        ["Disk_All"]            = "Todos los discos",
+        ["Disk_NotFound"]       = "No encontrado",
+        ["Corner_TopLeft"]      = "Superior izquierda",
+        ["Corner_TopRight"]     = "Superior derecha",
+        ["Corner_BottomLeft"]   = "Inferior izquierda",
+        ["Corner_BottomRight"]  = "Inferior derecha",
+        ["Dialog_ResetText"]    = "¿Restablecer todos los ajustes?",
+        ["Lbl_Autostart"]       = "Iniciar con Windows",
+        ["Lbl_Name"]            = "Nombre",
+        ["Lbl_Disks"]           = "Discos",
+        ["Lbl_DiskAlias"]       = "Nombre en overlay",
+        ["Validation_Color"]    = "Formato: #RRGGBB o #AARRGGBB",
+        ["Metric_CpuTemp"]      = "CPU: Temperatura",
+        ["Metric_CpuLoad"]      = "CPU: Uso",
+        ["Metric_GpuTemp"]      = "GPU: Temperatura",
+        ["Metric_GpuVram"]      = "GPU: VRAM (MB)",
+        ["Metric_GpuLoad"]      = "GPU: Uso",
+        ["Metric_RamUsed"]      = "RAM: Uso (MB)",
+        ["Metric_RamLoad"]      = "RAM: Uso (%)",
+        ["Metric_RamTemp"]      = "RAM: Temperatura",
+        ["Metric_MbTemp"]       = "Placa base: Temperatura",
+        ["Metric_DiskTemp"]     = "Disco: Temperatura",
+        ["Metric_DiskLoad"]     = "Disco: Uso",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> Zh = new Dictionary<string, string>
+    {
+        ["App_Title"]           = "Hardware Overlay",
+        ["Tray_Tooltip"]        = "Hardware Overlay",
+        ["Tray_Settings"]       = "设置",
+        ["Tray_Exit"]           = "退出",
+        ["Msg_AlreadyRunning"]  = "Hardware Overlay 已在运行。",
+        ["Win_Settings"]        = "Hardware Overlay — 设置",
+        ["Tab_Metrics"]         = "指标",
+        ["Tab_Overlay"]         = "悬浮窗",
+        ["Lbl_Prefix"]          = "前缀:",
+        ["Lbl_Color"]           = "颜色:",
+        ["Lbl_Font"]            = "字体:",
+        ["Lbl_Disk"]            = "磁盘:",
+        ["Lbl_BgOpacity"]       = "背景不透明度:",
+        ["Lbl_BgColor"]         = "背景颜色:",
+        ["Lbl_TextOpacity"]     = "文字不透明度:",
+        ["Lbl_AutoSize"]        = "自动大小:",
+        ["Lbl_Width"]           = "宽度:",
+        ["Lbl_Height"]          = "高度:",
+        ["Lbl_Corner"]          = "屏幕角落:",
+        ["Lbl_MarginX"]         = "水平边距:",
+        ["Lbl_MarginY"]         = "垂直边距:",
+        ["Lbl_UpdateInterval"]  = "更新间隔:",
+        ["Lbl_Language"]        = "语言:",
+        ["Btn_Reset"]           = "重置为默认",
+        ["Btn_Close"]           = "关闭",
+        ["Btn_Up"]              = "上移",
+        ["Btn_Down"]            = "下移",
+        ["Note_AutoSave"]       = "更改会自动应用并保存。",
+        ["Disk_All"]            = "所有磁盘",
+        ["Disk_NotFound"]       = "未找到",
+        ["Corner_TopLeft"]      = "左上",
+        ["Corner_TopRight"]     = "右上",
+        ["Corner_BottomLeft"]   = "左下",
+        ["Corner_BottomRight"]  = "右下",
+        ["Dialog_ResetText"]    = "将所有设置恢复为默认值？",
+        ["Lbl_Autostart"]       = "开机自启动",
+        ["Lbl_Name"]            = "名称",
+        ["Lbl_Disks"]           = "磁盘",
+        ["Lbl_DiskAlias"]       = "显示名称",
+        ["Validation_Color"]    = "格式：#RRGGBB 或 #AARRGGBB",
+        ["Metric_CpuTemp"]      = "CPU: 温度",
+        ["Metric_CpuLoad"]      = "CPU: 负载",
+        ["Metric_GpuTemp"]      = "GPU: 温度",
+        ["Metric_GpuVram"]      = "GPU: 显存 (MB)",
+        ["Metric_GpuLoad"]      = "GPU: 负载",
+        ["Metric_RamUsed"]      = "内存: 已用 (MB)",
+        ["Metric_RamLoad"]      = "内存: 使用率 (%)",
+        ["Metric_RamTemp"]      = "内存: 温度",
+        ["Metric_MbTemp"]       = "主板: 温度",
+        ["Metric_DiskTemp"]     = "磁盘: 温度",
+        ["Metric_DiskLoad"]     = "磁盘: 负载",
+    };
+
+    // Must be declared after the dictionaries — static fields initialize in
+    // declaration order, otherwise this map would be full of nulls.
+    private static readonly Dictionary<AppLanguage, IReadOnlyDictionary<string, string>> Tables = new()
+    {
+        [AppLanguage.English] = En,
+        [AppLanguage.Ukrainian] = Uk,
+        [AppLanguage.German] = De,
+        [AppLanguage.Portuguese] = Pt,
+        [AppLanguage.Spanish] = Es,
+        [AppLanguage.Chinese] = Zh
+    };
+}
