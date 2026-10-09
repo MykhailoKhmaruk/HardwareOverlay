@@ -41,9 +41,10 @@ Source: "..\HardwareOverlay\publish\{#AppExe}"; DestDir: "{app}"; Flags: ignorev
 Name: "{group}\{#AppName}";    Filename: "{app}\{#AppExe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
-; Launch after install (the exe elevates itself via the manifest)
+; Launch after install. shellexec is required — CreateProcess can't elevate,
+; and the exe demands admin rights via its manifest (error 740 without this).
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName}"; Flags: postinstall nowait skipifsilent shellexec
 
 ; Drop the autostart task on uninstall
 [UninstallRun]
