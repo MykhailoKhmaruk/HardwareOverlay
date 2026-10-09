@@ -6,7 +6,7 @@ of your screen — useful while gaming or stress-testing.
 
 Built with WPF on .NET 8, sensors via [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor).
 
-<!-- Add a screenshot: docs/screenshot.png -->
+![Hardware Overlay](docs/screenshot.png)
 
 ## Features
 
@@ -49,6 +49,12 @@ To sign the installer, drop a `.pfx` in `installer\certs\` and uncomment the
 ## Tech
 
 .NET 8 · WPF · CommunityToolkit.Mvvm · LibreHardwareMonitorLib · H.NotifyIcon
+
+## Screenshots
+
+| Metrics | Overlay settings |
+| --- | --- |
+| ![Metrics tab](docs/metrics.png) | ![Overlay tab](docs/settings.png) |
 
 ## License
 

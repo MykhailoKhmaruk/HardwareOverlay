@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Windows;
+using System.Windows.Navigation;
 using HardwareOverlay.Models;
 using HardwareOverlay.ViewModels;
 
@@ -16,6 +18,12 @@ public partial class SettingsWindow : Window
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    private void OnLinkNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
+    }
 
     private void OnPaletteColorClick(object sender, RoutedEventArgs e)
     {
