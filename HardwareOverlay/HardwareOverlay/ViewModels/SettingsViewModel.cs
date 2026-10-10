@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -6,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using HardwareOverlay.Localization;
 using HardwareOverlay.Models;
 using HardwareOverlay.Services;
+using Microsoft.Win32;
 
 namespace HardwareOverlay.ViewModels;
 
@@ -46,11 +48,32 @@ public sealed partial class DiskOption : ObservableObject
     private string _alias = string.Empty;
 }
 
+public sealed partial class MonitorOption : ObservableObject
+{
+    public MonitorOption(DisplayInfo display)
+    {
+        Id = display.Id;
+        Number = display.Number;
+        IsPrimary = display.IsPrimary;
+        Resolution = $"{display.Width}×{display.Height}";
+    }
+
+    public string Id { get; }
+    public int Number { get; }
+    public bool IsPrimary { get; }
+    public string Resolution { get; }
+
+    [ObservableProperty] private bool _isSelected;
+}
+
 public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 {
     private readonly SettingsManager _settingsManager;
     private readonly HardwareMonitorService _monitor;
     private readonly Dispatcher _dispatcher;
+
+    // Set while the VM writes monitor settings or refreshes checkboxes itself.
+    private bool _syncingMonitors;
 
     public SettingsViewModel(SettingsManager settingsManager, HardwareMonitorService monitor, Dispatcher dispatcher)
     {
@@ -71,7 +94,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         _monitor.Initialized += OnMonitorInitialized;
         if (_monitor.IsInitialized)
             SyncDisks();
+
+        RebuildMonitorOptions();
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
     }
+
+    public ObservableCollection<MonitorOption> MonitorOptions { get; } = new();
 
     public OverlaySettings Settings => _settingsManager.Settings;
 
@@ -138,6 +167,77 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e) =>
+        _dispatcher.InvokeAsync(RebuildMonitorOptions);
+
+    private void RebuildMonitorOptions()
+    {
+        foreach (var option in MonitorOptions)
+            option.PropertyChanged -= OnMonitorOptionChanged;
+        MonitorOptions.Clear();
+
+        foreach (var display in DisplayService.GetDisplays())
+        {
+            var option = new MonitorOption(display);
+            option.PropertyChanged += OnMonitorOptionChanged;
+            MonitorOptions.Add(option);
+        }
+
+        RefreshMonitorSelection();
+    }
+
+    // Checkboxes mirror the monitors the overlay is actually shown on.
+    private void RefreshMonitorSelection()
+    {
+        var targets = DisplayService.ResolveTargets(Settings).Select(d => d.Id).ToHashSet();
+
+        _syncingMonitors = true;
+        foreach (var option in MonitorOptions)
+            option.IsSelected = targets.Contains(option.Id);
+        _syncingMonitors = false;
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(OverlaySettings.ShowOnAllMonitors) or nameof(OverlaySettings.MonitorIds)))
+            return;
+
+        // User unticked "All monitors": keep only the primary one.
+        if (!_syncingMonitors && e.PropertyName == nameof(OverlaySettings.ShowOnAllMonitors) && !Settings.ShowOnAllMonitors)
+        {
+            var primary = MonitorOptions.FirstOrDefault(o => o.IsPrimary) ?? MonitorOptions.FirstOrDefault();
+            ApplyMonitorSelection(primary is null ? new List<string>() : new List<string> { primary.Id }, all: false);
+        }
+
+        RefreshMonitorSelection();
+    }
+
+    private void OnMonitorOptionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_syncingMonitors || sender is not MonitorOption || e.PropertyName != nameof(MonitorOption.IsSelected))
+            return;
+
+        var selected = MonitorOptions.Where(o => o.IsSelected).Select(o => o.Id).ToList();
+
+        // At least one monitor must stay selected — revert the last untick.
+        if (selected.Count == 0)
+        {
+            _dispatcher.InvokeAsync(RefreshMonitorSelection);
+            return;
+        }
+
+        ApplyMonitorSelection(selected, all: selected.Count == MonitorOptions.Count);
+    }
+
+    // MonitorIds first, so the overlay windows never flash on unwanted monitors.
+    private void ApplyMonitorSelection(List<string> ids, bool all)
+    {
+        _syncingMonitors = true;
+        Settings.MonitorIds = ids;
+        Settings.ShowOnAllMonitors = all;
+        _syncingMonitors = false;
+    }
+
     [RelayCommand]
     private void MoveUp(MetricSettings? metric)
     {
@@ -166,5 +266,10 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
             _settingsManager.ResetToDefaults();
     }
 
-    public void Dispose() => _monitor.Initialized -= OnMonitorInitialized;
+    public void Dispose()
+    {
+        _monitor.Initialized -= OnMonitorInitialized;
+        Settings.PropertyChanged -= OnSettingsPropertyChanged;
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+    }
 }

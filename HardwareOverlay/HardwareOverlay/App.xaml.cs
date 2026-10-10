@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Threading;
 using H.NotifyIcon;
+using Microsoft.Win32;
 using HardwareOverlay.Localization;
 using HardwareOverlay.Models;
 using HardwareOverlay.Services;
@@ -23,7 +24,7 @@ public partial class App : Application
     private SettingsManager? _settingsManager;
     private HardwareMonitorService? _monitor;
     private OverlayViewModel? _overlayViewModel;
-    private MainWindow? _overlayWindow;
+    private readonly Dictionary<string, MainWindow> _overlayWindows = new();
     private SettingsWindow? _settingsWindow;
     private TaskbarIcon? _trayIcon;
 
@@ -62,19 +63,57 @@ public partial class App : Application
                 case nameof(OverlaySettings.StartWithWindows):
                     AutostartService.Apply(_settingsManager.Settings.StartWithWindows);
                     break;
+                case nameof(OverlaySettings.ShowOnAllMonitors):
+                case nameof(OverlaySettings.MonitorIds):
+                    SyncOverlayWindows();
+                    break;
             }
         };
 
         _monitor = new HardwareMonitorService();
 
         _overlayViewModel = new OverlayViewModel(_settingsManager.Settings, _monitor, Dispatcher);
-        _overlayWindow = new MainWindow(_overlayViewModel);
-        _overlayWindow.Show();
+        SyncOverlayWindows();
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
         _monitor.Start();
 
         _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
         _trayIcon.ForceCreate(false);
+    }
+
+    // Raised on a system thread.
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e) =>
+        Dispatcher.InvokeAsync(SyncOverlayWindows);
+
+    // One overlay window per target monitor; existing windows are reused.
+    private void SyncOverlayWindows()
+    {
+        if (_settingsManager is null || _overlayViewModel is null)
+            return;
+
+        var targets = DisplayService.ResolveTargets(_settingsManager.Settings)
+            .Select(d => d.Id)
+            .ToHashSet();
+
+        foreach (var id in _overlayWindows.Keys.Where(id => !targets.Contains(id)).ToList())
+        {
+            _overlayWindows[id].Close();
+            _overlayWindows.Remove(id);
+        }
+
+        foreach (var id in targets)
+        {
+            if (_overlayWindows.TryGetValue(id, out var window))
+            {
+                window.UpdatePosition();
+                continue;
+            }
+
+            window = new MainWindow(_overlayViewModel, id);
+            _overlayWindows[id] = window;
+            window.Show();
+        }
     }
 
     private void ShowSettings()
@@ -112,6 +151,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         _settingsManager?.Flush();
         _overlayViewModel?.Dispose();
         _monitor?.Dispose();

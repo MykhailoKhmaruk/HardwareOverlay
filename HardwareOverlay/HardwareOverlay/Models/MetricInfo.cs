@@ -32,6 +32,9 @@ public static class MetricInfo
     public static bool SupportsHardwareSelection(MetricType type) =>
         type is MetricType.DiskTemperature or MetricType.DiskLoad;
 
+    public static bool SupportsTotal(MetricType type) =>
+        type is MetricType.RamUsed or MetricType.GpuMemoryUsed;
+
     public static MetricSettings CreateDefault(MetricType type)
     {
         var meta = Map[type];

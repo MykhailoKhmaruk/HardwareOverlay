@@ -69,7 +69,7 @@ public sealed class OverlayViewModel : IDisposable
         }
 
         for (int i = 0; i < visible.Count; i++)
-            Lines[i].Update(visible[i].Reading.Value, ResolveName(visible[i].Reading));
+            Lines[i].Update(visible[i].Reading.Value, ResolveName(visible[i].Reading), visible[i].Reading.Total);
     }
 
     // Disk alias wins over the name reported by LibreHardwareMonitor.
@@ -110,6 +110,8 @@ public sealed class OverlayViewModel : IDisposable
 
             case nameof(MetricSettings.Prefix):
             case nameof(MetricSettings.CustomName):
+            case nameof(MetricSettings.ShowTotal):
+            case nameof(MetricSettings.ShowInGb):
                 foreach (var line in Lines.Where(l => ReferenceEquals(l.Settings, metric)))
                     line.Refresh();
                 break;

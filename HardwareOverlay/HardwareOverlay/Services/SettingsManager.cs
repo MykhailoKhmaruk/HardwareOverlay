@@ -119,6 +119,8 @@ public sealed class SettingsManager
         Settings.UpdateIntervalMs = defaults.UpdateIntervalMs;
         Settings.Language = defaults.Language;
         Settings.StartWithWindows = defaults.StartWithWindows;
+        Settings.ShowOnAllMonitors = defaults.ShowOnAllMonitors;
+        Settings.MonitorIds = defaults.MonitorIds;
 
         Settings.Metrics.Clear();
         foreach (var metric in defaults.Metrics)

@@ -6,6 +6,7 @@ namespace HardwareOverlay.ViewModels;
 public sealed class OverlayLineViewModel : ObservableObject
 {
     private float? _value;
+    private float? _total;
 
     public OverlayLineViewModel(MetricSettings settings, string? hardwareId, bool showHardwareName)
     {
@@ -21,9 +22,10 @@ public sealed class OverlayLineViewModel : ObservableObject
 
     public string Text => BuildText();
 
-    public void Update(float? value, string? hardwareName)
+    public void Update(float? value, string? hardwareName, float? total = null)
     {
         _value = value;
+        _total = total ?? _total;
         HardwareName = hardwareName ?? HardwareName;
         OnPropertyChanged(nameof(Text));
     }
@@ -42,8 +44,22 @@ public sealed class OverlayLineViewModel : ObservableObject
         if (!string.IsNullOrEmpty(name))
             label = string.IsNullOrEmpty(label) ? $"{name}:" : $"{label} {name}";
 
-        var value = FormatValue(_value, Settings.Unit);
+        var value = Settings.SupportsTotal ? FormatMemory() : FormatValue(_value, Settings.Unit);
         return string.IsNullOrEmpty(label) ? value : $"{label} {value}";
+    }
+
+    private string FormatMemory()
+    {
+        if (_value is null)
+            return "N/A";
+
+        bool gb = Settings.ShowInGb;
+        string Fmt(float mb) => gb ? $"{mb / 1024f:F1}" : $"{mb:F0}";
+        var unit = gb ? "GB" : "MB";
+
+        return Settings.ShowTotal && _total is not null
+            ? $"{Fmt(_value.Value)} / {Fmt(_total.Value)} {unit}"
+            : $"{Fmt(_value.Value)} {unit}";
     }
 
     private static string FormatValue(float? value, string unit)

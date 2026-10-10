@@ -7,7 +7,7 @@ namespace HardwareOverlay.Services;
 
 public sealed record MetricRequest(MetricType Type, string? HardwareId);
 
-public sealed record MetricReading(MetricType Type, string? HardwareId, string? HardwareName, float? Value);
+public sealed record MetricReading(MetricType Type, string? HardwareId, string? HardwareName, float? Value, float? Total = null);
 
 public sealed record DiskInfo(string Id, string Name);
 
@@ -124,7 +124,7 @@ public sealed class HardwareMonitorService : IDisposable
             if (MetricInfo.SupportsHardwareSelection(request.Type))
                 ReadDisks(request, result);
             else
-                result.Add(new MetricReading(request.Type, null, null, ReadSingle(request.Type)));
+                result.Add(new MetricReading(request.Type, null, null, ReadSingle(request.Type), ReadTotal(request.Type)));
         }
 
         return result;
@@ -192,7 +192,7 @@ public sealed class HardwareMonitorService : IDisposable
                 // Sensors under the Memory hardware node.
                 var direct = GetHardware(HardwareType.Memory)
                     .SelectMany(AllSensors)
-                    .Where(s => s.SensorType == SensorType.Temperature && s.Value > 0)
+                    .Where(IsRealRamTemperature)
                     .Select(s => s.Value)
                     .Max();
 
@@ -200,10 +200,9 @@ public sealed class HardwareMonitorService : IDisposable
                     return direct;
 
                 // Fallback: some boards expose DIMM temp under Motherboard/SuperIO.
-                return _computer.Hardware
+                return GetHardware(HardwareType.Motherboard)
                     .SelectMany(AllSensors)
-                    .Where(s => s.SensorType == SensorType.Temperature
-                                && s.Value > 0
+                    .Where(s => IsRealRamTemperature(s)
                                 && (s.Name.Contains("DIMM", StringComparison.OrdinalIgnoreCase)
                                     || s.Name.Contains("Memory", StringComparison.OrdinalIgnoreCase)
                                     || s.Name.Contains("DRAM", StringComparison.OrdinalIgnoreCase)
@@ -224,6 +223,41 @@ public sealed class HardwareMonitorService : IDisposable
         }
     }
 
+    private float? ReadTotal(MetricType type)
+    {
+        switch (type)
+        {
+            case MetricType.RamUsed:
+            {
+                var used = FindSensor(MainMemory, SensorType.Data, "Memory Used")?.Value;
+                var available = FindSensor(MainMemory, SensorType.Data, "Memory Available")?.Value;
+                return used + available is { } totalGb ? totalGb * 1024f : null;
+            }
+
+            case MetricType.GpuMemoryUsed:
+            {
+                var gpu = PrimaryGpu;
+                if (gpu is null)
+                    return null;
+
+                var total = FindSensor(gpu, SensorType.SmallData, "GPU Memory Total", "D3D Dedicated Memory Total")?.Value
+                            ?? DedicatedMemoryMb(gpu);
+                return total > 0 ? total : null;
+            }
+
+            default:
+                return null;
+        }
+    }
+
+    private static readonly string[] ThresholdNameParts =
+        { "Limit", "Warning", "Critical", "Threshold", "Resolution", "High", "Low", "Max", "Min" };
+
+    private static bool IsRealRamTemperature(ISensor s) =>
+        s.SensorType == SensorType.Temperature
+        && s.Value is > 0 and < 120
+        && !ThresholdNameParts.Any(p => s.Name.Contains(p, StringComparison.OrdinalIgnoreCase));
+
     private IHardware? PrimaryCpu => GetHardware(HardwareType.Cpu).FirstOrDefault();
 
     // Discrete GPUs take priority over Intel iGPUs.
@@ -231,12 +265,51 @@ public sealed class HardwareMonitorService : IDisposable
         GetHardware(HardwareType.GpuNvidia)
             .Concat(GetHardware(HardwareType.GpuAmd))
             .Concat(GetHardware(HardwareType.GpuIntel))
+            .Select((gpu, vendorOrder) => (gpu, vendorOrder))
+            .OrderBy(x => IsLikelyIntegratedGpu(x.gpu))
+            .ThenByDescending(x => DedicatedMemoryMb(x.gpu))
+            .ThenBy(x => x.vendorOrder)
+            .Select(x => x.gpu)
             .FirstOrDefault();
+
+    private static readonly string[] IntegratedGpuNameParts =
+    {
+        "Radeon(TM) Graphics", "Radeon Graphics", "Vega", "UHD", "Iris", "HD Graphics",
+        "Intel(R) Graphics", "Arc(TM) Graphics", "780M", "760M", "740M", "680M", "660M", "610M"
+    };
+
+    private static bool IsLikelyIntegratedGpu(IHardware gpu)
+    {
+        if (gpu.HardwareType == HardwareType.GpuNvidia)
+            return false;
+
+        if (IntegratedGpuNameParts.Any(p => gpu.Name.Contains(p, StringComparison.OrdinalIgnoreCase)))
+            return true;
+
+        var dedicated = DedicatedMemoryMb(gpu);
+        return dedicated is > 0 and < 2048;
+    }
+
+    private static float DedicatedMemoryMb(IHardware gpu) =>
+        AllSensors(gpu)
+            .Where(s => s.SensorType == SensorType.SmallData
+                        && s.Value.HasValue
+                        && s.Name.Contains("Memory Total", StringComparison.OrdinalIgnoreCase)
+                        && !s.Name.Contains("Shared", StringComparison.OrdinalIgnoreCase))
+            .Select(s => s.Value!.Value)
+            .DefaultIfEmpty(0f)
+            .Max();
 
     // There are several Memory devices (Total/Virtual Memory); take the physical one.
     private IHardware? MainMemory =>
-        GetHardware(HardwareType.Memory).FirstOrDefault(h => h.Sensors.Any(s => s.Name == "Memory Used"))
-        ?? GetHardware(HardwareType.Memory).FirstOrDefault();
+        GetHardware(HardwareType.Memory)
+            .Where(h => !IsVirtualMemory(h))
+            .OrderByDescending(h => h.Sensors.Any(s => s.Name == "Memory Used"))
+            .FirstOrDefault();
+
+    private static bool IsVirtualMemory(IHardware hardware) =>
+        hardware.Name.Contains("Virtual", StringComparison.OrdinalIgnoreCase)
+        || hardware.Identifier.ToString().Contains("vram", StringComparison.OrdinalIgnoreCase);
 
     private void UpdateHardware(MetricRequest[] requests)
     {

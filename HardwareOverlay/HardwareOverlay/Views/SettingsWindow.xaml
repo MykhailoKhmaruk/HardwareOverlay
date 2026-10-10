@@ -117,6 +117,8 @@
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
 
                                             <TextBlock Grid.Row="0" Text="{Binding Path=[Lbl_Prefix], Source={x:Static loc:Loc.Instance}}" Style="{StaticResource FieldLabel}" />
@@ -190,6 +192,16 @@
                                                     </DataTemplate>
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
+
+                                            <CheckBox Grid.Row="5" Grid.Column="1" Margin="0,4"
+                                                      Visibility="{Binding SupportsTotal, Converter={StaticResource BoolToVis}}"
+                                                      IsChecked="{Binding ShowTotal}"
+                                                      Content="{Binding Path=[Lbl_ShowTotal], Source={x:Static loc:Loc.Instance}}" />
+
+                                            <CheckBox Grid.Row="6" Grid.Column="1" Margin="0,4"
+                                                      Visibility="{Binding SupportsTotal, Converter={StaticResource BoolToVis}}"
+                                                      IsChecked="{Binding ShowInGb}"
+                                                      Content="{Binding Path=[Lbl_ShowInGb], Source={x:Static loc:Loc.Instance}}" />
                                         </Grid>
 
                                     </StackPanel>
@@ -241,6 +253,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -341,7 +354,30 @@
                                 Value="{Binding Settings.UpdateIntervalMs}" VerticalAlignment="Center" />
                     </DockPanel>
 
-                    <CheckBox Grid.Row="10" Grid.ColumnSpan="2" Margin="0,8,0,0"
+                    <TextBlock Grid.Row="10" Text="{Binding Path=[Lbl_Monitors], Source={x:Static loc:Loc.Instance}}"
+                               Style="{StaticResource FieldLabel}" VerticalAlignment="Top" Margin="0,6,8,0" />
+                    <StackPanel Grid.Row="10" Grid.Column="1" Margin="0,6,0,4">
+                        <CheckBox IsChecked="{Binding Settings.ShowOnAllMonitors}" Margin="0,0,0,4"
+                                  Content="{Binding Path=[Monitor_All], Source={x:Static loc:Loc.Instance}}" />
+                        <ItemsControl ItemsSource="{Binding MonitorOptions}" Margin="18,0,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:MonitorOption}">
+                                    <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Path=[Monitor_Name], Source={x:Static loc:Loc.Instance}}" />
+                                            <TextBlock Text="{Binding Number}" Margin="4,0,0,0" />
+                                            <TextBlock Text="{Binding Resolution, StringFormat={}— {0}}" Margin="6,0,0,0" Foreground="Gray" />
+                                            <TextBlock Text="{Binding Path=[Monitor_Primary], Source={x:Static loc:Loc.Instance}, StringFormat={}({0})}"
+                                                       Margin="6,0,0,0" Foreground="Gray"
+                                                       Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVis}}" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <CheckBox Grid.Row="11" Grid.ColumnSpan="2" Margin="0,8,0,0"
                               IsChecked="{Binding Settings.StartWithWindows}"
                               Content="{Binding Path=[Lbl_Autostart], Source={x:Static loc:Loc.Instance}}" />
                 </Grid>

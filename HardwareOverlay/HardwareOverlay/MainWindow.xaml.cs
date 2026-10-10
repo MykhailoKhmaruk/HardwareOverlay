@@ -1,8 +1,10 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using HardwareOverlay.Interop;
 using HardwareOverlay.Models;
+using HardwareOverlay.Services;
 using HardwareOverlay.ViewModels;
 
 namespace HardwareOverlay;
@@ -14,19 +16,24 @@ public partial class MainWindow : Window
 {
     private readonly OverlaySettings _settings;
 
-    public MainWindow(OverlayViewModel viewModel)
+    public MainWindow(OverlayViewModel viewModel, string monitorId)
     {
         InitializeComponent();
 
         DataContext = viewModel;
         _settings = viewModel.Settings;
+        MonitorId = monitorId;
 
         _settings.PropertyChanged += OnSettingsPropertyChanged;
         SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
         SizeChanged += (_, _) => UpdatePosition();
+        // WPF applies the system-suggested rect after this event, so reposition afterwards.
+        DpiChanged += (_, _) => Dispatcher.InvokeAsync(UpdatePosition, DispatcherPriority.Loaded);
 
         ApplySize();
     }
+
+    public string MonitorId { get; }
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -75,21 +82,32 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdatePosition()
+    public void UpdatePosition()
     {
-        var area = SystemParameters.WorkArea;
-        var mx = _settings.MarginX;
-        var my = _settings.MarginY;
-        var w = ActualWidth;
-        var h = ActualHeight;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+            return;
 
-        (Left, Top) = _settings.Corner switch
+        var display = DisplayService.GetDisplays().FirstOrDefault(d => d.Id == MonitorId);
+        if (display is null)
+            return;
+
+        // Window size and margins are in DIPs; the target monitor's DPI defines the pixel size.
+        var scale = display.Scale;
+        var mx = (int)Math.Round(_settings.MarginX * scale);
+        var my = (int)Math.Round(_settings.MarginY * scale);
+        var w = (int)Math.Round(ActualWidth * scale);
+        var h = (int)Math.Round(ActualHeight * scale);
+
+        var (x, y) = _settings.Corner switch
         {
-            ScreenCorner.TopLeft     => (area.Left + mx,      area.Top + my),
-            ScreenCorner.TopRight    => (area.Right - w - mx, area.Top + my),
-            ScreenCorner.BottomLeft  => (area.Left + mx,      area.Bottom - h - my),
-            _                        => (area.Right - w - mx, area.Bottom - h - my)
+            ScreenCorner.TopLeft     => (display.WorkLeft + mx,      display.WorkTop + my),
+            ScreenCorner.TopRight    => (display.WorkRight - w - mx, display.WorkTop + my),
+            ScreenCorner.BottomLeft  => (display.WorkLeft + mx,      display.WorkBottom - h - my),
+            _                        => (display.WorkRight - w - mx, display.WorkBottom - h - my)
         };
+
+        NativeMethods.MoveWindow(hwnd, x, y);
     }
 
     protected override void OnClosed(EventArgs e)

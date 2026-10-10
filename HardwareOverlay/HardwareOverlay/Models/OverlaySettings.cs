@@ -17,6 +17,11 @@ public partial class OverlaySettings : ObservableObject
     [ObservableProperty] private int _updateIntervalMs = 1000;
     [ObservableProperty] private AppLanguage _language = AppLanguage.Ukrainian;
     [ObservableProperty] private bool _startWithWindows;
+    [ObservableProperty] private bool _showOnAllMonitors;
+
+    // Device names (\\.\DISPLAYn) of the selected monitors; empty = primary only.
+    // Always assign a new list so PropertyChanged fires.
+    [ObservableProperty] private List<string> _monitorIds = new();
 
     // Collection order = line order in the overlay.
     public ObservableCollection<MetricSettings> Metrics { get; set; } = new();
@@ -57,6 +62,7 @@ public partial class OverlaySettings : ObservableObject
         UpdateIntervalMs = Math.Clamp(UpdateIntervalMs, 250, 10000);
         if (!Enum.IsDefined(Language))
             Language = AppLanguage.Ukrainian;
+        MonitorIds = (MonitorIds ?? new()).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
 
         var seen = new HashSet<MetricType>();
         for (int i = Metrics.Count - 1; i >= 0; i--)

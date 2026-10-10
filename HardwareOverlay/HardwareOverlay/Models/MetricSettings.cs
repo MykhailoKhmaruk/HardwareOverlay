@@ -6,7 +6,7 @@ namespace HardwareOverlay.Models;
 public partial class MetricSettings : ObservableObject
 {
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DisplayName), nameof(NameKey), nameof(Unit), nameof(SupportsHardwareSelection))]
+    [NotifyPropertyChangedFor(nameof(DisplayName), nameof(NameKey), nameof(Unit), nameof(SupportsHardwareSelection), nameof(SupportsTotal))]
     private MetricType _type;
 
     [ObservableProperty] private bool _isEnabled;
@@ -23,6 +23,9 @@ public partial class MetricSettings : ObservableObject
     // For disks: the drive's Identifier from LibreHardwareMonitor. null = all drives.
     [ObservableProperty] private string? _hardwareId;
 
+    [ObservableProperty] private bool _showTotal;
+    [ObservableProperty] private bool _showInGb;
+
     // Metric name localization key, used by LocConverter in XAML.
     [JsonIgnore] public string NameKey => MetricInfo.GetNameKey(Type);
 
@@ -31,4 +34,5 @@ public partial class MetricSettings : ObservableObject
         string.IsNullOrWhiteSpace(CustomName) ? Localization.Loc.Instance.Resolve(NameKey) : CustomName;
     [JsonIgnore] public string Unit => MetricInfo.GetUnit(Type);
     [JsonIgnore] public bool SupportsHardwareSelection => MetricInfo.SupportsHardwareSelection(Type);
+    [JsonIgnore] public bool SupportsTotal => MetricInfo.SupportsTotal(Type);
 }
