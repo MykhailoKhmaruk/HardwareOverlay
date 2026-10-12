@@ -9,6 +9,19 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
     </PropertyGroup>
 
+    <!-- Release publish settings: self-contained single-file win-x64, matching
+         what the installer (installer/HardwareOverlay.iss) ships as {#AppExe}.
+         IncludeNativeLibrariesForSelfExtract is required for WPF here — without
+         it, native libs (wpfgfx_cor3.dll etc.) are left as loose files next to
+         the exe instead of embedded, and the installer only ships the exe
+         itself, causing a DllNotFoundException crash on startup. -->
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <SelfContained>true</SelfContained>
+        <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
         <PackageReference Include="H.NotifyIcon.Wpf" Version="2.1.3" />

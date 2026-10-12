@@ -193,6 +193,28 @@
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
 
+                                            <TextBlock Grid.Row="4" Text="{Binding Path=[Lbl_MbSensor], Source={x:Static loc:Loc.Instance}}" Style="{StaticResource FieldLabel}"
+                                                       Visibility="{Binding SupportsSensorSelection, Converter={StaticResource BoolToVis}}" />
+                                            <ComboBox Grid.Row="4" Grid.Column="1" Margin="0,4"
+                                                      Visibility="{Binding SupportsSensorSelection, Converter={StaticResource BoolToVis}}"
+                                                      ItemsSource="{Binding DataContext.SensorOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      SelectedValuePath="Id"
+                                                      SelectedValue="{Binding HardwareId, Converter={StaticResource NullToEmpty}}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:SensorOption}">
+                                                        <TextBlock>
+                                                            <TextBlock.Text>
+                                                                <MultiBinding Converter="{x:Static conv:LocConverter.Instance}">
+                                                                    <Binding Path="NameKey" />
+                                                                    <Binding Source="{x:Static loc:Loc.Instance}" Path="Current" />
+                                                                    <Binding Path="Name" />
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+
                                             <CheckBox Grid.Row="5" Grid.Column="1" Margin="0,4"
                                                       Visibility="{Binding SupportsTotal, Converter={StaticResource BoolToVis}}"
                                                       IsChecked="{Binding ShowTotal}"

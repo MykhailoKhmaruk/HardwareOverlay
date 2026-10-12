@@ -2,7 +2,7 @@
 ; Compile: ISCC.exe HardwareOverlay.iss
 
 #define AppName    "Hardware Overlay"
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.1"
 #define AppExe     "HardwareOverlay.exe"
 #define PawnIOMinVersion "2.2.0"
 

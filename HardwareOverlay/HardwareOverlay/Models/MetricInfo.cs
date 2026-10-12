@@ -32,6 +32,11 @@ public static class MetricInfo
     public static bool SupportsHardwareSelection(MetricType type) =>
         type is MetricType.DiskTemperature or MetricType.DiskLoad;
 
+    // Single-sensor pick: the board exposes several temperature sensors
+    // (e.g. Super I/O "Temperature #1"/"#2") and the user chooses one.
+    public static bool SupportsSensorSelection(MetricType type) =>
+        type is MetricType.MotherboardTemperature;
+
     public static bool SupportsTotal(MetricType type) =>
         type is MetricType.RamUsed or MetricType.GpuMemoryUsed;
 

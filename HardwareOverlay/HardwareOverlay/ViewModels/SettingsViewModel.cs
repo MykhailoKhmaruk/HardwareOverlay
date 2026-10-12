@@ -48,6 +48,23 @@ public sealed partial class DiskOption : ObservableObject
     private string _alias = string.Empty;
 }
 
+public sealed partial class SensorOption : ObservableObject
+{
+    public SensorOption(string id, string name)
+    {
+        Id = id;
+        Name = name;
+    }
+
+    public string Id { get; }
+
+    // When set, the combo shows the translation of this key (e.g. "Auto", "Not found")
+    // with Name appended as a suffix if non-empty.
+    [ObservableProperty] private string? _nameKey;
+
+    [ObservableProperty] private string _name = string.Empty;
+}
+
 public sealed partial class MonitorOption : ObservableObject
 {
     public MonitorOption(DisplayInfo display)
@@ -91,9 +108,21 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
                 AddDiskOption(new DiskOption(metric.HardwareId!, $"({metric.HardwareId})") { NameKey = "Disk_NotFound" });
         }
 
+        SensorOptions.Add(new SensorOption(string.Empty, string.Empty) { NameKey = "Sensor_Auto" });
+
+        // Same idea for a previously picked motherboard sensor that's no longer reported.
+        foreach (var metric in Settings.Metrics.Where(m => m.SupportsSensorSelection && !string.IsNullOrEmpty(m.HardwareId)))
+        {
+            if (SensorOptions.All(s => s.Id != metric.HardwareId))
+                SensorOptions.Add(new SensorOption(metric.HardwareId!, $"({metric.HardwareId})") { NameKey = "Sensor_NotFound" });
+        }
+
         _monitor.Initialized += OnMonitorInitialized;
         if (_monitor.IsInitialized)
+        {
             SyncDisks();
+            SyncSensors();
+        }
 
         RebuildMonitorOptions();
         Settings.PropertyChanged += OnSettingsPropertyChanged;
@@ -105,6 +134,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     public OverlaySettings Settings => _settingsManager.Settings;
 
     public ObservableCollection<DiskOption> DiskOptions { get; } = new();
+
+    public ObservableCollection<SensorOption> SensorOptions { get; } = new();
 
     public IReadOnlyList<CornerOption> CornerOptions { get; } = new[]
     {
@@ -130,7 +161,11 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         "#FFE57373", "#FFBA68C8", "#FFFFF176", "#FF90A4AE"
     };
 
-    private void OnMonitorInitialized() => _dispatcher.InvokeAsync(SyncDisks);
+    private void OnMonitorInitialized() => _dispatcher.InvokeAsync(() =>
+    {
+        SyncDisks();
+        SyncSensors();
+    });
 
     private void AddDiskOption(DiskOption option)
     {
@@ -162,6 +197,24 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
             {
                 // A "Not found" placeholder becomes a normal entry again.
                 existing.Name = disk.Name;
+                existing.NameKey = null;
+            }
+        }
+    }
+
+    // Same "add/update, never remove" rule as SyncDisks — see its comment.
+    private void SyncSensors()
+    {
+        foreach (var sensor in _monitor.MotherboardTemperatureSensors)
+        {
+            var existing = SensorOptions.FirstOrDefault(s => s.Id == sensor.Id);
+            if (existing is null)
+            {
+                SensorOptions.Add(new SensorOption(sensor.Id, sensor.Name));
+            }
+            else
+            {
+                existing.Name = sensor.Name;
                 existing.NameKey = null;
             }
         }

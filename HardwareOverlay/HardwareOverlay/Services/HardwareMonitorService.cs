@@ -11,6 +11,8 @@ public sealed record MetricReading(MetricType Type, string? HardwareId, string? 
 
 public sealed record DiskInfo(string Id, string Name);
 
+public sealed record SensorInfo(string Id, string Name);
+
 public sealed class HardwareMonitorService : IDisposable
 {
     private enum Category { Cpu, Gpu, Memory, Motherboard, Storage }
@@ -30,9 +32,11 @@ public sealed class HardwareMonitorService : IDisposable
     private volatile MetricRequest[] _requests = Array.Empty<MetricRequest>();
     private volatile int _intervalMs = 1000;
     private volatile IReadOnlyList<DiskInfo> _disks = Array.Empty<DiskInfo>();
+    private volatile IReadOnlyList<SensorInfo> _motherboardTemperatureSensors = Array.Empty<SensorInfo>();
     private volatile bool _isInitialized;
 
     public IReadOnlyList<DiskInfo> Disks => _disks;
+    public IReadOnlyList<SensorInfo> MotherboardTemperatureSensors => _motherboardTemperatureSensors;
     public bool IsInitialized => _isInitialized;
 
     // Both events fire on a background thread; marshal to the UI via Dispatcher.InvokeAsync.
@@ -56,7 +60,8 @@ public sealed class HardwareMonitorService : IDisposable
     public static MetricRequest[] BuildRequests(OverlaySettings settings) =>
         settings.Metrics
             .Where(m => m.IsEnabled)
-            .Select(m => new MetricRequest(m.Type, m.SupportsHardwareSelection && !string.IsNullOrEmpty(m.HardwareId) ? m.HardwareId : null))
+            .Select(m => new MetricRequest(m.Type,
+                (m.SupportsHardwareSelection || m.SupportsSensorSelection) && !string.IsNullOrEmpty(m.HardwareId) ? m.HardwareId : null))
             .ToArray();
 
     private async Task RunAsync(CancellationToken ct)
@@ -73,6 +78,17 @@ public sealed class HardwareMonitorService : IDisposable
 
         _disks = GetHardware(HardwareType.Storage)
             .Select(h => new DiskInfo(h.Identifier.ToString(), h.Name))
+            .ToList();
+
+        // Update once up front so Super I/O (board) temperature sensors have
+        // their names/values populated before we snapshot the sensor list.
+        foreach (var mb in GetHardware(HardwareType.Motherboard))
+            UpdateRecursive(mb);
+
+        _motherboardTemperatureSensors = GetHardware(HardwareType.Motherboard)
+            .SelectMany(AllSensors)
+            .Where(s => s.SensorType == SensorType.Temperature)
+            .Select(s => new SensorInfo(s.Identifier.ToString(), s.Name))
             .ToList();
 
 #if DEBUG
@@ -124,7 +140,7 @@ public sealed class HardwareMonitorService : IDisposable
             if (MetricInfo.SupportsHardwareSelection(request.Type))
                 ReadDisks(request, result);
             else
-                result.Add(new MetricReading(request.Type, null, null, ReadSingle(request.Type), ReadTotal(request.Type)));
+                result.Add(new MetricReading(request.Type, null, null, ReadSingle(request.Type, request.HardwareId), ReadTotal(request.Type)));
         }
 
         return result;
@@ -153,7 +169,7 @@ public sealed class HardwareMonitorService : IDisposable
             result.Add(new MetricReading(request.Type, request.HardwareId, null, null));
     }
 
-    private float? ReadSingle(MetricType type)
+    private float? ReadSingle(MetricType type, string? sensorId = null)
     {
         switch (type)
         {
@@ -214,6 +230,17 @@ public sealed class HardwareMonitorService : IDisposable
             case MetricType.MotherboardTemperature:
             {
                 var mb = GetHardware(HardwareType.Motherboard).FirstOrDefault();
+
+                // User picked a specific sensor (e.g. Super I/O "Temperature #2").
+                if (sensorId is not null)
+                {
+                    var selected = AllSensors(mb)
+                        .FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Identifier.ToString() == sensorId);
+                    if (selected is not null)
+                        return selected.Value;
+                }
+
+                // No selection (or the saved sensor is gone) — best-effort auto-pick.
                 return (FindSensor(mb, SensorType.Temperature, "System", "Motherboard", "Mainboard")
                         ?? AllSensors(mb).FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Value > 0))?.Value;
             }

@@ -6,7 +6,7 @@ namespace HardwareOverlay.Models;
 public partial class MetricSettings : ObservableObject
 {
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DisplayName), nameof(NameKey), nameof(Unit), nameof(SupportsHardwareSelection), nameof(SupportsTotal))]
+    [NotifyPropertyChangedFor(nameof(DisplayName), nameof(NameKey), nameof(Unit), nameof(SupportsHardwareSelection), nameof(SupportsSensorSelection), nameof(SupportsTotal))]
     private MetricType _type;
 
     [ObservableProperty] private bool _isEnabled;
@@ -21,6 +21,7 @@ public partial class MetricSettings : ObservableObject
     [ObservableProperty] private double _fontSize = 14;
 
     // For disks: the drive's Identifier from LibreHardwareMonitor. null = all drives.
+    // For motherboard temperature: the chosen sensor's Identifier. null = auto-detect.
     [ObservableProperty] private string? _hardwareId;
 
     [ObservableProperty] private bool _showTotal;
@@ -34,5 +35,6 @@ public partial class MetricSettings : ObservableObject
         string.IsNullOrWhiteSpace(CustomName) ? Localization.Loc.Instance.Resolve(NameKey) : CustomName;
     [JsonIgnore] public string Unit => MetricInfo.GetUnit(Type);
     [JsonIgnore] public bool SupportsHardwareSelection => MetricInfo.SupportsHardwareSelection(Type);
+    [JsonIgnore] public bool SupportsSensorSelection => MetricInfo.SupportsSensorSelection(Type);
     [JsonIgnore] public bool SupportsTotal => MetricInfo.SupportsTotal(Type);
 }
